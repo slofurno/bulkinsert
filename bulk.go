@@ -22,10 +22,12 @@ type Inserter struct {
 	n         int
 	template  []string
 	batchSize int
+	ncols     int
 }
 
 func (s *Inserter) Prepare(table string, cols ...string) {
 	s.stmt = fmt.Sprintf("insert into %s (%s) values ", table, strings.Join(cols, ","))
+	s.ncols = len(cols)
 
 	var xs []string
 	for i := 0; i < len(cols); i++ {
@@ -41,12 +43,12 @@ func (s *Inserter) Prepare(table string, cols ...string) {
 
 		s.template = append(s.template, fmt.Sprintf(part, ns...))
 	}
-
-	fmt.Println(s.stmt + strings.Join(s.template, ","))
-
 }
 
 func (s *Inserter) Insert(xs ...interface{}) error {
+	if len(xs) != s.ncols {
+		return fmt.Errorf("expected %d cols, got %d", s.ncols, len(xs))
+	}
 	s.n++
 	s.values = append(s.values, xs...)
 
