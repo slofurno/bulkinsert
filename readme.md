@@ -2,18 +2,16 @@ a minimal library for bulk inserts
 
 ### Usage
 
-- start a sql transaction
-
 ```go
 txn, err := db.Begin()
 
 inserter := bulkinserter.New(txn)
 
 inserter.Prepare(
-  table,
-  "columnA",
-  "columnB",
-  "columnC",
+  "table_name",
+  "column_a",
+  "column_b",
+  "column_c",
 )
 
 for i := range rows {
