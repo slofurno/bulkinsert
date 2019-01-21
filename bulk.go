@@ -1,12 +1,11 @@
 package bulkinsert
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 )
 
-func New(txn *sql.Tx) *Inserter {
+func New(txn Execer) *Inserter {
 	return &Inserter{txn: txn, batchSize: 500}
 }
 
@@ -15,8 +14,17 @@ func (s *Inserter) WithBatchSize(sz int) *Inserter {
 	return s
 }
 
+type Execer interface {
+	Exec(query string, args ...interface{}) (Result, error)
+}
+
+type Result interface {
+	LastInsertId() (int64, error)
+	RowsAffected() (int64, error)
+}
+
 type Inserter struct {
-	txn       *sql.Tx
+	txn       Execer
 	stmt      string
 	values    []interface{}
 	n         int
@@ -61,10 +69,6 @@ func (s *Inserter) Insert(xs ...interface{}) error {
 
 func (s *Inserter) Flush() error {
 	return s.flush()
-}
-
-func (s *Inserter) Commit() error {
-	return s.txn.Commit()
 }
 
 func (s *Inserter) flush() error {
