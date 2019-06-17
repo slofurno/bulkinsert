@@ -16,56 +16,45 @@ func (s *Inserter) WithBatchSize(sz int) *Inserter {
 }
 
 type Inserter struct {
-	txn       *sql.Tx
-	stmt      string
-	values    []interface{}
-	n         int
-	template  []string
-	batchSize int
-	ncols     int
+	txn         *sql.Tx
+	stmt        string
+	values      []interface{}
+	n           int
+	template    []string
+	batchSize   int
+	ncols       int
+	didTemplate bool
 }
 
-func (s *Inserter) PrepareRaw(stmt string, cols []string) {
+func (s *Inserter) Prepare(stmt string) {
 	s.stmt = stmt
-	s.ncols = len(cols)
-
-	var xs []string
-	for i := 0; i < len(cols); i++ {
-		xs = append(xs, "$%d")
-	}
-	part := "(" + strings.Join(xs, ",") + ")"
-	for i := 0; i < s.batchSize; i++ {
-		start := len(cols) * i
-		var ns []interface{}
-		for j := 0; j < len(cols); j++ {
-			ns = append(ns, 1+start+j)
-		}
-
-		s.template = append(s.template, fmt.Sprintf(part, ns...))
-	}
 }
 
-func (s *Inserter) Prepare(table string, cols ...string) {
-	s.stmt = fmt.Sprintf("insert into %s (%s) values ", table, strings.Join(cols, ",")) + "%s"
-	s.ncols = len(cols)
-
+func (s *Inserter) buildTemplate(ncols int) []string {
+	var ret []string
 	var xs []string
-	for i := 0; i < len(cols); i++ {
+	for i := 0; i < ncols; i++ {
 		xs = append(xs, "$%d")
 	}
 	part := "(" + strings.Join(xs, ",") + ")"
 	for i := 0; i < s.batchSize; i++ {
-		start := len(cols) * i
+		start := ncols * i
 		var ns []interface{}
-		for j := 0; j < len(cols); j++ {
+		for j := 0; j < ncols; j++ {
 			ns = append(ns, 1+start+j)
 		}
 
-		s.template = append(s.template, fmt.Sprintf(part, ns...))
+		ret = append(ret, fmt.Sprintf(part, ns...))
 	}
+	return ret
 }
 
 func (s *Inserter) Insert(xs ...interface{}) error {
+	if !s.didTemplate {
+		s.didTemplate = true
+		s.ncols = len(xs)
+		s.template = s.buildTemplate(len(xs))
+	}
 	if len(xs) != s.ncols {
 		return fmt.Errorf("expected %d cols, got %d", s.ncols, len(xs))
 	}

@@ -30,8 +30,7 @@ func TestPrepareRaw(t *testing.T) {
 		val = EXCLUDED.val
 `
 
-	cols := []string{"id", "val"}
-	loader.Prepare("test_upsert", cols...)
+	loader.Prepare("insert into test_upsert (id, val) values %s")
 
 	for i := 0; i < 2000; i++ {
 		if err := loader.Insert(i, "aaa"); err != nil {
@@ -52,7 +51,7 @@ func TestPrepareRaw(t *testing.T) {
 	}
 
 	loader = New(txn)
-	loader.PrepareRaw(stmt, cols)
+	loader.Prepare(stmt)
 	for i := 0; i < 1000; i++ {
 		loader.Insert(i, "bbb")
 	}
